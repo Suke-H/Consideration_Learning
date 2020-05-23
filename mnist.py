@@ -5,6 +5,8 @@ from PIL import Image
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import pandas as pd
+from glob import glob
+import csv
 
 import torch
 import torch.nn as nn
@@ -21,6 +23,16 @@ history = {
     'test_acc': [],
 }
 
+# 設定するパラメータ等
+limit_phase = "train"
+limit_acc = 0.75
+lr=0.01
+num_epochs = 50
+root_path = "data/train75/"
+
+
+end_epoch = 0
+file_no = len(glob(root_path+"*.png"))
 
 class ImageTransform():
     """
@@ -61,19 +73,12 @@ class Net(torch.nn.Module):
         super(Net, self).__init__()
         self.fc1 = torch.nn.Linear(28*28, 1000)
         self.fc2 = torch.nn.Linear(1000, 10)
-        self.dropout1 = torch.nn.Dropout(0.5)
-        self.dropout2 = torch.nn.Dropout(0.5)
  
     def forward(self, x):
         # テンソルのリサイズ: (N, 1, 28, 28) --> (N, 784)
         x = x.view(-1, 28 * 28) 
-
         x = F.relu(self.fc1(x))
-        x = self.dropout1(x)
-
         x = F.relu(self.fc2(x))
-        x = self.dropout2(x)
- 
         return F.log_softmax(x, dim=1)
 
 def train_model(net, dataloaders_dict, criterion, optimizer, limit_phase, limit_acc, num_epochs):
@@ -116,7 +121,7 @@ def train_model(net, dataloaders_dict, criterion, optimizer, limit_phase, limit_
             #     continue
 
             # データローダーからミニバッチを取り出すループ
-            for i, (inputs, labels) in tqdm(enumerate(dataloaders_dict[phase])):
+            for i, (inputs, labels) in enumerate(tqdm(dataloaders_dict[phase])):
 
                 _batch_size = inputs.size(0)
 
@@ -142,9 +147,9 @@ def train_model(net, dataloaders_dict, criterion, optimizer, limit_phase, limit_
 
                     # ミニバッチごとのデータセットに正解1/不正解0でラベル付け
                     batch_tf = preds.eq(labels)
-                    # numpyの一次配列に変換
+                    # numpyに変換
                     batch_tf = batch_tf.cpu().numpy()
-                    batch_tf.reshape(batch_tf.shape[0])
+
                     # train_tf / val_tfに代入
                     if phase == "train":
                         train_tf[i*_batch_size : (i+1)*_batch_size] = batch_tf
@@ -171,37 +176,75 @@ def train_model(net, dataloaders_dict, criterion, optimizer, limit_phase, limit_
         if stop_flag:
             break
 
+    global end_epoch
+    end_epoch = epoch + 1
+
     # train_tf/val_tfをcsvに出力
     train_df = pd.DataFrame({"TF": train_tf}, index = [i for i in range(len(dataloaders_dict["train"].dataset))])
-    train_df.to_csv("data/train_result.csv")
+    train_df.to_csv(root_path+"train_result_"+str(file_no)+".csv")
     val_df = pd.DataFrame({"TF": val_tf}, index = [i for i in range(len(dataloaders_dict["val"].dataset))])
-    val_df.to_csv("data/val_result.csv")
+    val_df.to_csv(root_path+"val_result_"+str(file_no)+".csv")
 
-    # 何epochで終わったか出力
-    return epoch + 1
+    # 学習記録(epoch-acc)をプロット
+    plt.figure()
+    plt.plot(range(end_epoch), history['train_acc'], label='train_acc')
+    plt.plot(range(end_epoch), history['val_acc'], label='val_acc')
+    plt.plot([limit_acc for i in range(end_epoch)], label='limit_acc')
+    plt.xlabel('epoch')
+    plt.xlabel('acc')
+    plt.legend()
+    plt.savefig(root_path+"acc_"+str(file_no)+".png")
+
+    # csvにも保存
+    train_history = pd.DataFrame({"acc": history['train_acc'].cpu().numpy()}, index = [i for i in range(end_epoch)])
+    train_history.to_csv(root_path+"train_history_"+str(file_no)+".csv")
+    val_history = pd.DataFrame({"acc": history['val_acc'].cpu().numpy()}, index = [i for i in range(end_epoch)])
+    val_history.to_csv(root_path+"val_history_"+str(file_no)+".csv")
 
 def test_model(net, dataloaders_dict):
     net.eval()  # または net.train(False) でも良い
     test_loss = 0
     correct = 0
 
+    test_size = len(dataloaders_dict["test"].dataset)
+
+    # データセットに正解1/不正解0でラベル付け
+    test_tf = np.zeros(test_size)
+
     with torch.no_grad():
-        for data, target in dataloaders_dict['test']:
-            data = data.view(-1, 28 * 28)
-            # print(data.shape)
-            output = net(data)
-            test_loss += F.nll_loss(output, target, reduction='sum').item()
-            pred = output.argmax(dim=1, keepdim=True)
-            # print(pred.shape)
-            # a = input()
+        for i, (inputs, labels) in enumerate(tqdm(dataloaders_dict["test"])):
+            _batch_size = inputs.size(0)
+
+            inputs = inputs.view(-1, 28 * 28)
+            output = net(inputs)
+            test_loss += F.nll_loss(output, labels, reduction='sum').item()
+            preds = output.argmax(dim=1, keepdim=True)
             
             # targetとpredが合っていたらカウントアップ
-            correct += pred.eq(target.view_as(pred)).sum().item()
+            correct += preds.eq(labels.view_as(preds)).sum().item()
 
-    test_loss /= 10000
+            # ミニバッチごとのデータセットに正解1/不正解0でラベル付け
+            batch_tf = preds.eq(labels.view_as(preds))
+            # numpyの一次配列に変換
+            batch_tf = batch_tf.cpu().numpy()
+            batch_tf = batch_tf.flatten()
+            
+            # test_tfに代入
+            test_tf[i*_batch_size : (i+1)*_batch_size] = batch_tf
 
-    print('Test loss (avg): {}, Accuracy: {}'.format(test_loss,
-                                                        correct / 10000))
+    # train_tf/val_tfをcsvに出力
+    test_df = pd.DataFrame({"TF": test_tf}, index = [i for i in range(test_size)])
+    test_df.to_csv(root_path+"test_result_"+str(file_no)+".csv")
+
+    test_loss /= test_size
+    test_acc = correct / test_size
+
+     # 学習エポック数, test_accを記録
+    with open(root_path+"epoch.csv", 'a', newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([file_no, end_epoch, test_acc])
+
+    print('Test loss (avg): {}, Accuracy: {}'.format(test_loss, test_acc))
 
 # 入力画像の前処理用の関数
 transform = ImageTransform()
@@ -227,31 +270,6 @@ test_dataset = torchvision.datasets.MNIST(root='./data',
 
 print("train:{}, val:{}, test:{}".format(len(train_dataset), len(val_dataset), len(test_dataset)))
 
-# # 前処理しないデータセットと比較                                    
-# sample_set = torchvision.datasets.MNIST(root='./data', 
-#                                         train=True,
-#                                         download=True,
-#                                         transform=None
-#                                         )
-                              
-# sample2_set = torchvision.datasets.MNIST(root='./data', 
-#                                         train=True,
-#                                         download=True,
-#                                         transform=transforms.ToTensor()
-#                                         )
-
-# img2 =  sample2_set[59999][0]
-# print(type(img2), img2.shape)
-# a = input()
-# img2 =  img2.cpu().numpy().reshape(28, 28)
-
-# img1 = sample_set[59999][0]
-# img2 =  trainset[59999][0].cpu().numpy().reshape(28, 28)
-# plt.imshow(img1, cmap = 'gray')
-# plt.show()
-# plt.imshow(img2, cmap = 'gray')
-# plt.show()
-
 # DataLoaderの作成
 train_loader = torch.utils.data.DataLoader(train_dataset,
                  batch_size=100, shuffle=True, num_workers=2)
@@ -268,23 +286,11 @@ model = Net()
 # 損失関数
 criterion = torch.nn.CrossEntropyLoss()
 # 最適アルゴリズム
-optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.5)
+optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.5)
 
 # 学習
-num_epochs = 5
-limit_phase = "val"
-limit_acc = 0.75
-attempt_num = train_model(model, dataloaders_dict, criterion, optimizer, limit_phase, limit_acc, num_epochs)
-
-plt.figure()
-plt.plot(range(attempt_num), history['train_acc'], label='train_acc')
-plt.plot(range(attempt_num), history['val_acc'], label='val_acc')
-plt.xlabel('epoch')
-plt.xlabel('acc')
-plt.legend()
-plt.savefig('data/acc_test.png')
+train_model(model, dataloaders_dict, criterion, optimizer, limit_phase, limit_acc, num_epochs)
 
 # 検証
 test_model(model, dataloaders_dict)
-
 
