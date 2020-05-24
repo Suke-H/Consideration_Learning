@@ -25,11 +25,10 @@ history = {
 
 # 設定するパラメータ等
 limit_phase = "train"
-limit_acc = 0.75
-lr=0.01
+limit_acc = 0.60
+lr=10**(-3)
 num_epochs = 50
-root_path = "data/train75/"
-
+root_path = "data/train60/"
 
 end_epoch = 0
 file_no = len(glob(root_path+"*.png"))
@@ -187,18 +186,20 @@ def train_model(net, dataloaders_dict, criterion, optimizer, limit_phase, limit_
 
     # 学習記録(epoch-acc)をプロット
     plt.figure()
-    plt.plot(range(end_epoch), history['train_acc'], label='train_acc')
-    plt.plot(range(end_epoch), history['val_acc'], label='val_acc')
-    plt.plot([limit_acc for i in range(end_epoch)], label='limit_acc')
+    runs = [i for i in range(1, end_epoch+1)]
+    plt.plot(runs, history['train_acc'], label='train_acc')
+    plt.plot(runs, history['val_acc'], label='val_acc')
+    plt.plot(runs, [limit_acc for i in range(end_epoch)], label='limit_acc')
     plt.xlabel('epoch')
-    plt.xlabel('acc')
+    plt.ylabel('acc')
+    plt.xticks(runs)
     plt.legend()
     plt.savefig(root_path+"acc_"+str(file_no)+".png")
 
     # csvにも保存
-    train_history = pd.DataFrame({"acc": history['train_acc'].cpu().numpy()}, index = [i for i in range(end_epoch)])
+    train_history = pd.DataFrame({"acc": history['train_acc']}, index = [i for i in range(end_epoch)])
     train_history.to_csv(root_path+"train_history_"+str(file_no)+".csv")
-    val_history = pd.DataFrame({"acc": history['val_acc'].cpu().numpy()}, index = [i for i in range(end_epoch)])
+    val_history = pd.DataFrame({"acc": history['val_acc']}, index = [i for i in range(end_epoch)])
     val_history.to_csv(root_path+"val_history_"+str(file_no)+".csv")
 
 def test_model(net, dataloaders_dict):
@@ -246,51 +247,52 @@ def test_model(net, dataloaders_dict):
 
     print('Test loss (avg): {}, Accuracy: {}'.format(test_loss, test_acc))
 
-# 入力画像の前処理用の関数
-transform = ImageTransform()
-img_transformed = transform
+if __name__ == "__main__":
+    # 入力画像の前処理用の関数
+    transform = ImageTransform()
+    img_transformed = transform
 
-# データセット読み込み + 前処理
-trainval_dataset = torchvision.datasets.MNIST(root='./data', 
-                    train=True, download=True, transform=img_transformed)
+    # データセット読み込み + 前処理
+    trainval_dataset = torchvision.datasets.MNIST(root='./data', 
+                        train=True, download=True, transform=img_transformed)
 
-# 元々trainデータのものをtrain/valに分割
-n_samples = len(trainval_dataset) # n_samples is 60000
-train_size = int(n_samples * 0.8) # train_size is 48000
+    # 元々trainデータのものをtrain/valに分割
+    n_samples = len(trainval_dataset) # n_samples is 60000
+    train_size = int(n_samples * 0.8) # train_size is 48000
 
-subset1_indices = list(range(0,train_size)) # [0,1,.....47999]
-subset2_indices = list(range(train_size,n_samples)) # [48000,48001,.....59999]
+    subset1_indices = list(range(0,train_size)) # [0,1,.....47999]
+    subset2_indices = list(range(train_size,n_samples)) # [48000,48001,.....59999]
 
-train_dataset = Subset(trainval_dataset, subset1_indices)
-val_dataset   = Subset(trainval_dataset, subset2_indices)
+    train_dataset = Subset(trainval_dataset, subset1_indices)
+    val_dataset   = Subset(trainval_dataset, subset2_indices)
 
-# データセット読み込み + 前処理
-test_dataset = torchvision.datasets.MNIST(root='./data', 
-                train=False, download=True, transform=img_transformed)
+    # データセット読み込み + 前処理
+    test_dataset = torchvision.datasets.MNIST(root='./data', 
+                    train=False, download=True, transform=img_transformed)
 
-print("train:{}, val:{}, test:{}".format(len(train_dataset), len(val_dataset), len(test_dataset)))
+    print("train:{}, val:{}, test:{}".format(len(train_dataset), len(val_dataset), len(test_dataset)))
 
-# DataLoaderの作成
-train_loader = torch.utils.data.DataLoader(train_dataset,
-                 batch_size=100, shuffle=True, num_workers=2)
-val_loader = torch.utils.data.DataLoader(val_dataset, 
-                batch_size=100, shuffle=False, num_workers=2)                                         
-test_loader = torch.utils.data.DataLoader(test_dataset, 
-                batch_size=100, shuffle=False, num_workers=2)
+    # DataLoaderの作成
+    train_loader = torch.utils.data.DataLoader(train_dataset,
+                    batch_size=100, shuffle=True, num_workers=2)
+    val_loader = torch.utils.data.DataLoader(val_dataset, 
+                    batch_size=100, shuffle=False, num_workers=2)                                         
+    test_loader = torch.utils.data.DataLoader(test_dataset, 
+                    batch_size=100, shuffle=False, num_workers=2)
 
-# 辞書型変数にまとめる
-dataloaders_dict = {"train": train_loader, "val": val_loader, "test": test_loader}
+    # 辞書型変数にまとめる
+    dataloaders_dict = {"train": train_loader, "val": val_loader, "test": test_loader}
 
-# モデル定義
-model = Net()
-# 損失関数
-criterion = torch.nn.CrossEntropyLoss()
-# 最適アルゴリズム
-optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.5)
+    # モデル定義
+    model = Net()
+    # 損失関数
+    criterion = torch.nn.CrossEntropyLoss()
+    # 最適アルゴリズム
+    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.5)
 
-# 学習
-train_model(model, dataloaders_dict, criterion, optimizer, limit_phase, limit_acc, num_epochs)
+    # 学習
+    train_model(model, dataloaders_dict, criterion, optimizer, limit_phase, limit_acc, num_epochs)
 
-# 検証
-test_model(model, dataloaders_dict)
+    # 検証
+    test_model(model, dataloaders_dict)
 
