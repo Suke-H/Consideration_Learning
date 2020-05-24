@@ -45,13 +45,13 @@ val_dataset   = Subset(trainval_dataset, subset2_indices)
 test_dataset = torchvision.datasets.MNIST(root='./data', 
                 train=False, download=True, transform=None)
 
-train_df =  pd.read_csv('data/result/train_sorted.csv').values
+train_df =  pd.read_csv('data/result/entire/train_sorted.csv').values
 train_indices, train_nums = train_df.T
 
-val_df = pd.read_csv('data/result/val_sorted.csv').values
+val_df = pd.read_csv('data/result/entire/val_sorted.csv').values
 val_indices, val_nums = val_df.T
 
-test_df =  pd.read_csv('data/result/test_sorted.csv').values
+test_df =  pd.read_csv('data/result/entire/test_sorted.csv').values
 test_indices, test_nums = test_df.T
 
 # display30(train_dataset, train_indices[:30], train_nums[:30], "data/result/train_false.png")
