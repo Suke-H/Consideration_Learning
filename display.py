@@ -23,9 +23,16 @@ def display30(dataset, indices, nums, fig_path):
     #図が重ならないようにする
     plt.tight_layout()
     #図を表示
-    plt.show()
+    #plt.show()
     #保存
-    #plt.savefig(fig_path)
+    plt.savefig(fig_path)
+    # pdfファイルの初期化
+    #pp = PdfPages(fig_path)
+
+    # figureをセーブする
+    #pp.savefig()
+
+    plt.close()
 
 # データセット読み込み + 前処理
 trainval_dataset = torchvision.datasets.MNIST(root='./data', 
@@ -54,14 +61,14 @@ val_indices, val_nums = val_df.T
 test_df =  pd.read_csv('data/result/entire/test_sorted.csv').values
 test_indices, test_nums = test_df.T
 
-# display30(train_dataset, train_indices[:30], train_nums[:30], "data/result/train_false.png")
-# display30(val_dataset, val_indices[:30], val_nums[:30], "data/result/val_false.png")
-# display30(test_dataset, test_indices[:30], test_nums[:30], "data/result/test_false.png")
+display30(train_dataset, train_indices[:30], train_nums[:30], "data/result/entire/train_false.png")
+display30(val_dataset, val_indices[:30], val_nums[:30], "data/result/entire/val_false.png")
+display30(test_dataset, test_indices[:30], test_nums[:30], "data/result/entire/test_false.png")
 
-# train_indices, train_nums = train_indices[::-1], train_nums[::-1]
-# val_indices, val_nums = val_indices[::-1], val_nums[::-1]
-# test_indices, test_nums = test_indices[::-1], test_nums[::-1]
+train_indices, train_nums = train_indices[::-1], train_nums[::-1]
+val_indices, val_nums = val_indices[::-1], val_nums[::-1]
+test_indices, test_nums = test_indices[::-1], test_nums[::-1]
 
-display30(train_dataset, train_indices[:30], train_nums[:30], "data/result/train_true.png")
-display30(val_dataset, val_indices[:30], val_nums[:30], "data/result/val_true.png")
-display30(test_dataset, test_indices[:30], test_nums[:30], "data/result/test_true.png")
+display30(train_dataset, train_indices[:30], train_nums[:30], "data/result/entire/train_true.png")
+display30(val_dataset, val_indices[:30], val_nums[:30], "data/result/entire/val_true.png")
+display30(test_dataset, test_indices[:30], test_nums[:30], "data/result/entire/test_true.png")

@@ -1,0 +1,274 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[dvipdfmx]{graphicx}
+\usepackage[dvipdfmx]{color}
+
+\usepackage{listings, jlisting}
+\usepackage{color}
+\usepackage{here}
+\lstset{
+    language=Python,
+    backgroundcolor={\color[gray]{.90}},
+    basicstyle={\ttfamily\footnotesize},
+    identifierstyle={\small},
+    commentstyle={\small\ttfamily \color[rgb]{0,0.5,0}},
+    keywordstyle={\small\bfseries \color[rgb]{0,0,0.8}},
+    ndkeywordstyle={\small},
+    stringstyle={\small\ttfamily \color[rgb]{0,0,1}},
+    frame={single},
+    breaklines=true,
+    columns=[l]{fullflexible},
+    numbers=left,
+    xrightmargin=0zw,
+    xleftmargin=3zw,
+    numberstyle={\scriptsize},
+    stepnumber=1,
+    numbersep=1zw,
+    morecomment=[l]{//}
+}
+
+% タイトル
+\title{斟酌学習　レポート}
+\author{本田 康祐}
+\date{2020/05/25}
+
+\begin{document}
+
+\maketitle
+
+\section{「ナイーブな方法」の実装}
+
+\begin{enumerate}
+    \item training accuracyが50,60,75,80\%になったところで学習を止める
+    \item validation accuracyが50,60,75,80\% になったところで学習を止める
+\end{enumerate}
+
+という8つの条件でそれぞれ5回試行し、test accuracyがどういう値になるのか、実験してみた。
+
+今回データはMNISTを利用した。MNISTには訓練データ60000個と検証データ10000個があるが、
+バリデーションデータは用意されてないので、訓練データから訓練データ48000個、バリデーションデータ12000個
+を取り出した。
+
+モデルは以下に示すように、全結合層(fc1, fc2)2個を用いた簡単なDNNで試した。
+ドロップアウト層を付けるとtrain accとval accで大きく差が出るので、
+今回は付けていない。
+
+\begin{verbatim}
+    Net(
+      (fc1): Linear(in_features=784, out_features=1000, bias=True)
+      (fc2): Linear(in_features=1000, out_features=10, bias=True)
+    )
+\end{verbatim}
+
+\begin{table}[H]
+    \centering
+    \caption{その他のパラメータ}
+    \begin{tabular}{c|c}
+    パラメータの種類      & 使用したパラメータ           \\ \hline
+    fc1とfc2の活性化関数 & ReLU                \\ \hline
+    出力関数          & Softmax             \\ \hline
+    損失関数          & Cross Entropy Error \\ \hline
+    最適化アルゴリズム     & SGD                 \\ 
+    \end{tabular}
+\end{table}
+
+% fc1とfc2の活性化関数はrelu関数、出力関数にはソフトマックス関数を用いた。
+% 損失関数はクロスエントロピー損失、最適化アルゴリズムにはSGDを用いた。
+
+また、各条件に応じて学習率を変更した。
+
+\begin{table}[H]
+    \centering
+    \caption{各条件に応じた学習率の設定}
+    \begin{tabular}{c|c}
+    trainおよびval acc(\%) & 学習率  \\ \hline
+    50                  & $10^{-4}$ \\ \hline
+    60                  & $10^{-3}$ \\ \hline
+    75                  & $10^{-2}$ \\ \hline
+    80                  & $10^{-2}$ \\ 
+    \end{tabular}
+    \end{table}
+% trainおよびval accが50\%のとき$lr=10^{-4}$、60\%のとき$lr=10^{-3}$、
+% 75,80\%のとき$lr=10^{-2}$にした。
+
+\section{実験結果}
+
+\subsection{8つの各条件に対するtest accuracyの結果}
+
+8つの各条件に対するtest accuracyは以下のようになった。
+
+\begin{table}[H]
+    
+\centering
+\caption{8つの各条件に対するtest accuracyの結果}
+\begin{tabular}{c|c|c}
+条件           & 平均(\%) & 分散    \\ \hline
+train acc=50\% & 54.0   & 4.64  \\ \hline
+val acc=50\%   & 52.9   & 4.35  \\ \hline
+train acc=60\% & 70.2   & 35.38 \\ \hline
+val acc=60\%   & 60.9   & 5.06  \\ \hline
+train acc=75\% & 85.2   & 10.48 \\ \hline
+val acc=75\%   & 76.9   & 55.86 \\ \hline
+train acc=80\% & 89.4   & 16.22 \\ \hline
+val acc=80\%   & 88.1   & 35.65 \\
+\end{tabular}
+\end{table}
+
+この表より、次の2つのことがわかった。
+
+\begin{itemize}
+    \item train accよりval accを指定した方がtest accが制御できた
+    \item 基本的にaccが80\%より50\%の方がtest accの分散が小さい結果となった
+\end{itemize}
+
+また、val accが75, 80\%のときに悪い結果となっているが、
+その原因としてわかっていることが2つある。
+
+\subsubsection{学習終了時のaccuracyの値が指定した値をオーバーした}
+
+1つ目はval accが75,80\%の時の学習率を大きくしていたからか、
+突発的に指定したaccの値を大きく超えてしまったケースが表れてしまったからである。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=10cm]{img/acc/val60/acc_0.png}
+    \caption{val accが60\%の時の1回目の試行の学習曲線}
+    \label{good_val}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=10cm]{img/acc/val80/acc_3.png}
+    \caption{val accが80\%の時の4回目の試行の学習曲線}
+    \label{bad_val}
+\end{figure}
+
+図\ref{good_val}はval accが60\%の時の1回目の試行の学習曲線を取り出したものである。
+epochは12回で終わり、test accは59.9\%という良い結果が得られた。
+
+一方、図\ref{bad_val}はval accが80\%の時の4回目の試行の学習曲線を取り出したものである。
+epochは2回で終わったためこのような直線になっているが、最終的なval accの値が80\%を大きく越しており、
+test accは86.44\%と、80\%を越す結果が得られた。
+
+\subsubsection{学習epoch数が上限に達した}
+
+2つ目は定めたaccに達しないままepoch数が上限を超えてしまったことがあったからである。
+今回、上限のepoch数を50回と定めていたが、val accが75\%のときに1回だけ、
+80\%のときに1回だけaccの目標値に達しないまま上限のepoch数に達してしまい、
+その条件のときのtest accが悪くなってしまった。
+その2つの条件で分散が異様に大きいのはそのためである。
+
+\subsection{誤検出/正検出が多かったデータ}
+
+\subsubsection{訓練データ・バリデーションデータ・検証データで比較}
+
+8つの条件全体から誤検出/正検出の数を総計し、訓練データ・バリデーションデータ・検証データで
+上位30枚のデータを見比べた。
+(バリデーションデータ、テストデータでは全て誤検出したデータが30枚以上あったがID順で上位30枚を決めている。
+また、各文字画像のタイトルは「MNISTのID(正検出の数)」を表す。)
+
+\newpage
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=10cm]{img/entire/train_false.png}
+    \caption{8つの条件全体で誤検出した訓練データ上位30枚}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=10cm]{img/entire/train_true.png}
+    \caption{8つの条件全体で正検出した訓練データ上位30枚}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=10cm]{img/entire/val_false.png}
+    \caption{8つの条件全体で誤検出したバリデーションデータ上位30枚}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=10cm]{img/entire/val_true.png}
+    \caption{8つの条件全体で正検出したバリデーションデータ上位30枚}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=10cm]{img/entire/test_false.png}
+    \caption{8つの条件全体で誤検出したテストデータ上位30枚}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=10cm]{img/entire/train_true.png}
+    \caption{8つの条件全体で正検出したテストデータ上位30枚}
+\end{figure}
+
+これらの図より、次の2つのことがわかった。
+
+\begin{itemize}
+    \item val, testは40個の結果全てにおいて誤検出していたものがあったが、trainは多くても29個誤検出くらいであった。
+    そのため、val, testで誤検出になるデータと、trainで誤検出になるデータに相関があるのかがここではわからなかった。
+    \item 見た感じ、誤検出/正検出のデータを見比べても誤検出データのほうが難しいものが集まっている、というわけではなかった。
+\end{itemize}
+
+\subsubsection{trainおよびvalidation accuracyが50\%の時と80\%の時で比較}
+
+trainおよびvalidation accuracyが50\%の時と80\%の時で、誤検出/正検出の数の上位30枚を比較した。
+
+結論からいうと、あまり明確な違いが見られなかった。
+
+ここではvalidation accuracyが50\%の時と80\%の時の、
+訓練データ・バリデーションデータ・検証データの誤検出上位30枚を示す。
+
+\newpage
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=10cm]{img/val50/train_false.png}
+    \caption{validation accuracyが50\%の時に誤検出した訓練データ上位30枚}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=10cm]{img/val80/train_false.png}
+    \caption{validation accuracyが80\%の時に誤検出した訓練データ上位30枚}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=10cm]{img/val50/val_false.png}
+    \caption{validation accuracyが50\%の時に誤検出したバリデーションデータ上位30枚}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=10cm]{img/val80/val_false.png}
+    \caption{validation accuracyが80\%の時に誤検出したバリデーションデータ上位30枚}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=10cm]{img/val50/test_false.png}
+    \caption{validation accuracyが50\%の時に誤検出した検証データ上位30枚}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=10cm]{img/val80/test_false.png}
+    \caption{validation accuracyが80\%の時に誤検出した検証データ上位30枚}
+\end{figure}
+
+\section{結論}
+
+MNIST程度のデータであれば、学習率をうまく調整し目標のaccuracyで学習が止まるようにすれば
+ある程度test accuracyの値が調整できることが分かった。
+
+ただ、MNISTだとどのデータが「難しい」データなのかがわからなかったので、
+識別器が「難しい」データを識別できなくなっていたのかはこの実験ではわからなかった。
+
+そのため、末廣先生に提案していただいたようなシンプルなデータでもう一度実験したい。
+
+\end{document}
+
