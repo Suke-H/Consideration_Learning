@@ -1,0 +1,11 @@
+,acc
+0,"tensor(0.3190, dtype=torch.float64)"
+1,"tensor(0.3640, dtype=torch.float64)"
+2,"tensor(0.4020, dtype=torch.float64)"
+3,"tensor(0.4310, dtype=torch.float64)"
+4,"tensor(0.4500, dtype=torch.float64)"
+5,"tensor(0.4600, dtype=torch.float64)"
+6,"tensor(0.4760, dtype=torch.float64)"
+7,"tensor(0.4900, dtype=torch.float64)"
+8,"tensor(0.5090, dtype=torch.float64)"
+9,"tensor(0.5370, dtype=torch.float64)"

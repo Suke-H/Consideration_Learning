@@ -20,17 +20,18 @@ from torchvision import models, transforms
 history = {
     'train_acc': [],
     'val_acc': [],
-    'test_acc': [],
+    'test_acc': []
 }
 
 # 設定するパラメータ等
 limit_phase = "train"
-limit_acc = 0.60
-lr=10**(-3)
-num_epochs = 50
-root_path = "data/train60/"
+limit_acc = 0.75
+lr = 10**(-2)
+num_epochs = 100
 
 end_epoch = 0
+
+root_path = "data/artifact/val80/"
 file_no = len(glob(root_path+"*.png"))
 
 class ImageTransform():
@@ -74,7 +75,7 @@ class Net(torch.nn.Module):
         self.fc2 = torch.nn.Linear(1000, 10)
  
     def forward(self, x):
-        # テンソルのリサイズ: (N, 1, 28, 28) --> (N, 784)
+        # テンソルのリサイズ: (N, 1, 28, 28) -> (N, 784)
         x = x.view(-1, 28 * 28) 
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
@@ -120,8 +121,8 @@ def train_model(net, dataloaders_dict, criterion, optimizer, limit_phase, limit_
             #     continue
 
             # データローダーからミニバッチを取り出すループ
-            for i, (inputs, labels) in enumerate(tqdm(dataloaders_dict[phase])):
-
+            # for i, (inputs, labels) in enumerate(tqdm(dataloaders_dict[phase])):
+            for i, (inputs, labels) in enumerate(dataloaders_dict[phase]):
                 _batch_size = inputs.size(0)
 
                 # optimizerを初期化
@@ -156,8 +157,6 @@ def train_model(net, dataloaders_dict, criterion, optimizer, limit_phase, limit_
                         val_tf[i*_batch_size : (i+1)*_batch_size] = batch_tf
                     
             # epochごとのlossと正解率を表示
-            #print("{}-len: {}".format(phase, len(dataloaders_dict[phase].dataset)))
-            print("collect: {}".format(epoch_corrects))
             epoch_loss = epoch_loss / len(dataloaders_dict[phase].dataset)
             epoch_acc = epoch_corrects.double(
             ) / len(dataloaders_dict[phase].dataset)
@@ -202,7 +201,7 @@ def train_model(net, dataloaders_dict, criterion, optimizer, limit_phase, limit_
     val_history = pd.DataFrame({"acc": history['val_acc']}, index = [i for i in range(end_epoch)])
     val_history.to_csv(root_path+"val_history_"+str(file_no)+".csv")
 
-def test_model(net, dataloaders_dict):
+def test_model(net, dataloaders_dict, input_dim):
     net.eval()  # または net.train(False) でも良い
     test_loss = 0
     correct = 0
@@ -216,7 +215,7 @@ def test_model(net, dataloaders_dict):
         for i, (inputs, labels) in enumerate(tqdm(dataloaders_dict["test"])):
             _batch_size = inputs.size(0)
 
-            inputs = inputs.view(-1, 28 * 28)
+            inputs = inputs.view(-1, input_dim)
             output = net(inputs)
             test_loss += F.nll_loss(output, labels, reduction='sum').item()
             preds = output.argmax(dim=1, keepdim=True)
@@ -248,6 +247,7 @@ def test_model(net, dataloaders_dict):
     print('Test loss (avg): {}, Accuracy: {}'.format(test_loss, test_acc))
 
 if __name__ == "__main__":
+
     # 入力画像の前処理用の関数
     transform = ImageTransform()
     img_transformed = transform
@@ -294,5 +294,5 @@ if __name__ == "__main__":
     train_model(model, dataloaders_dict, criterion, optimizer, limit_phase, limit_acc, num_epochs)
 
     # 検証
-    test_model(model, dataloaders_dict)
+    test_model(model, dataloaders_dict, 28*28)
 
