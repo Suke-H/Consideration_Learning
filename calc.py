@@ -8,7 +8,7 @@ from tqdm import tqdm
 import pathlib
 
 # フォルダ取得
-root_paths = sorted(glob("data/**/**"))
+root_paths = sorted(glob("data/artifact/experiment/**/**"))
 root_paths = [s for s in root_paths if 'epoch' in s]
 
 for root_path in root_paths:
