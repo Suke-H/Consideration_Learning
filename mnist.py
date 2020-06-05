@@ -16,24 +16,6 @@ import torch.utils.data as data
 import torchvision
 from torchvision import models, transforms
 
-# 学習結果の保存用
-history = {
-    'train_acc': [],
-    'val_acc': [],
-    'test_acc': []
-}
-
-# 設定するパラメータ等
-limit_phase = "train"
-limit_acc = 0.75
-lr = 10**(-2)
-num_epochs = 100
-
-end_epoch = 0
-
-root_path = "data/artifact/val80/"
-file_no = len(glob(root_path+"*.png"))
-
 class ImageTransform():
     """
     画像の前処理クラス。
@@ -81,7 +63,7 @@ class Net(torch.nn.Module):
         x = F.relu(self.fc2(x))
         return F.log_softmax(x, dim=1)
 
-def train_model(net, dataloaders_dict, criterion, optimizer, limit_phase, limit_acc, num_epochs):
+def train_model(net, dataloaders_dict, criterion, optimizer, limit_phase, limit_acc, num_epochs, root_path):
     """
     モデルを訓練
 
@@ -93,6 +75,16 @@ def train_model(net, dataloaders_dict, criterion, optimizer, limit_phase, limit_
         num_epochs : エポック数
 
     """
+
+    # 学習結果の保存用
+    history = {
+        'train_acc': [],
+        'val_acc': [],
+        'test_acc': []
+    }
+
+    file_no = len(glob(root_path+"*.png"))
+
     # 停止フラグ
     stop_flag = False
 
@@ -162,10 +154,10 @@ def train_model(net, dataloaders_dict, criterion, optimizer, limit_phase, limit_
             ) / len(dataloaders_dict[phase].dataset)
 
             # historyに保存
-            history[phase + '_acc'].append(epoch_acc)
+            history[phase + '_acc'].append(epoch_acc.item())
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
 
-            # 下限accを越したら学習停止
+            # 上限accを越したら学習停止
             if epoch_acc >= limit_acc and phase == limit_phase:
                 print("{}_acc : {} >= {}\nstop at {} epoch!".format(phase, epoch_acc, limit_acc, epoch + 1))
                 stop_flag = True
@@ -174,8 +166,10 @@ def train_model(net, dataloaders_dict, criterion, optimizer, limit_phase, limit_
         if stop_flag:
             break
 
-    global end_epoch
     end_epoch = epoch + 1
+
+    if stop_flag == False:
+        print("learning_epoch has reached the upper_limit_epoch {} before {}_acc reached the upper_limit_acc {} ...".format(end_epoch, phase, limit_acc))
 
     # train_tf/val_tfをcsvに出力
     train_df = pd.DataFrame({"TF": train_tf}, index = [i for i in range(len(dataloaders_dict["train"].dataset))])
@@ -201,7 +195,9 @@ def train_model(net, dataloaders_dict, criterion, optimizer, limit_phase, limit_
     val_history = pd.DataFrame({"acc": history['val_acc']}, index = [i for i in range(end_epoch)])
     val_history.to_csv(root_path+"val_history_"+str(file_no)+".csv")
 
-def test_model(net, dataloaders_dict, input_dim):
+def test_model(net, dataloaders_dict, input_dim, root_path):
+    file_no = len(glob(root_path+"*.png"))
+
     net.eval()  # または net.train(False) でも良い
     test_loss = 0
     correct = 0
@@ -239,18 +235,22 @@ def test_model(net, dataloaders_dict, input_dim):
     test_loss /= test_size
     test_acc = correct / test_size
 
-     # 学習エポック数, test_accを記録
-    with open(root_path+"epoch.csv", 'a', newline="") as f:
+     # test_accを記録
+    with open(root_path+"test_acc.csv", 'a', newline="") as f:
         writer = csv.writer(f)
-        writer.writerow([file_no, end_epoch, test_acc])
+        writer.writerow([file_no, test_acc])
 
     print('Test loss (avg): {}, Accuracy: {}'.format(test_loss, test_acc))
 
 if __name__ == "__main__":
 
+    limit_phase = "train"
+    limit_acc = 0.75
+    lr = 10**(-2)
+    num_epochs = 10
+    root_path = "data/MNIST_result/experiment/train75/"
+
     # 入力画像の前処理用の関数
-    transform = ImageTransform()
-    img_transformed = transform
 
     # データセット読み込み + 前処理
     trainval_dataset = torchvision.datasets.MNIST(root='./data', 
@@ -291,8 +291,8 @@ if __name__ == "__main__":
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.5)
 
     # 学習
-    train_model(model, dataloaders_dict, criterion, optimizer, limit_phase, limit_acc, num_epochs)
+    train_model(model, dataloaders_dict, criterion, optimizer, limit_phase, limit_acc, num_epochs, root_path)
 
     # 検証
-    test_model(model, dataloaders_dict, 28*28)
+    test_model(model, dataloaders_dict, 28*28, root_path)
 
