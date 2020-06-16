@@ -3,7 +3,7 @@ from glob import glob
 import re
 import numpy as np
 
-root_paths = sorted(glob("data/artifact/experiment/**"))
+root_paths = sorted(glob("data/artifact/animation/experiment/**"))
 root_paths = [s for s in root_paths if ('train' in s) or ('val' in s)]
 print(root_paths)
 

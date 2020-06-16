@@ -17,13 +17,7 @@ import torchvision
 from torchvision import models, transforms
 
 from mnist import ImageTransform, train_model, test_model
-
-# 設定するパラメータ等
-limit_phase = "val"
-limit_acc = 0.80
-lr=10**(-4)
-momentum = 0.5
-num_epochs = 100
+from modules import fix_train_model, fix_test_model
 
 class ArtifactDataset(data.Dataset):
     """
@@ -84,20 +78,23 @@ class SimpleNet(torch.nn.Module):
         super(SimpleNet, self).__init__()
         self.fc1 = torch.nn.Linear(2, 64)
         self.fc2 = torch.nn.Linear(64, 4)
-        # self.fc3 = torch.nn.Linear(64, 4)
  
     def forward(self, x):
         # テンソルのリサイズ: (N, 1, 2, 1) --> (N, 2)
         x = x.view(-1, 2)
         x = F.relu(self.fc1(x))
-        # x = F.dropout()
-        # x = F.relu(self.fc2(x))
-        # x = F.relu(self.fc3(x))
         x = self.fc2(x)
-        # return F.log_softmax(x, dim=1)
         return x
 
 if __name__ == "__main__":
+
+    # 設定するパラメータ等
+    limit_phase = "val"
+    limit_acc = 0.50
+    lr=10**(-4)
+    momentum = 0.5
+    num_epochs = 100
+    root_path = "data/artifact/re_ex/val50/"
 
     # 人工データ読み込み
     train_x = np.load("data/artifact/dataset/train_x.npy")
@@ -129,6 +126,10 @@ if __name__ == "__main__":
     # 辞書型変数にまとめる
     dataloaders_dict = {"train": train_loader, "val": val_loader, "test": test_loader}
 
+    # 生データも辞書型に
+    data_dict = {"train_x": train_x, "val_x": val_x, "test_x": test_x, 
+                    "train_y": train_y, "val_y": val_y, "test_y": test_y}
+
     # モデル定義
     model = SimpleNet()
     # 損失関数
@@ -140,8 +141,8 @@ if __name__ == "__main__":
     # optimizer = optim.Adam(model.parameters(), lr=lr, betas=(0.9, 0.99), eps=1e-09)
 
     # 学習
-    train_model(model, dataloaders_dict, criterion, optimizer, limit_phase, limit_acc, num_epochs)
+    fix_train_model(model, dataloaders_dict, data_dict, criterion, optimizer, limit_phase, limit_acc, num_epochs, root_path)
 
     # 検証
-    test_model(model, dataloaders_dict, 2)
+    fix_test_model(model, dataloaders_dict, data_dict, 2, root_path)
 

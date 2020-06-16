@@ -61,6 +61,7 @@ def display_artifact(x, nums, fig_path):
     # plt.savefig(fig_path)
     plt.close()
 
+
 # 人工データ読み込み
 train_x = np.load("data/artifact/dataset/train_x.npy")
 # train_y = np.load("data/artifact/dataset/train_y.npy")
@@ -70,29 +71,24 @@ test_x = np.load("data/artifact/dataset/test_x.npy")
 # test_y = np.load("data/artifact/dataset/test_y.npy")
 
 # フォルダ取得
-root_paths = sorted(glob("data/artifact/re_ex/result/**"))
-root_paths = [s for s in root_paths if ('train' in s) or ('val' in s) or ('entire' in s)]
+root_path = "data/artifact/re_ex/experiment/val80"
 
-print(root_paths)
+# csvを読み込み
+train_df =  pd.read_csv(root_path + '/train_result_1.csv')
+# "TF"で昇順ソート
+train_df = train_df.sort_values('TF')
+# numpyに変換
+_, train_nums = train_df.values.T
 
-for root_path in tqdm(root_paths):
+val_df =  pd.read_csv(root_path + '/val_result_1.csv')
+val_df = val_df.sort_values('TF')
+val_indices, val_nums = val_df.values.T
 
-    # csvを読み込み
-    train_df =  pd.read_csv(root_path + '/train.csv')
-    # "Tの数"で昇順ソート
-    # train_df = train_df.sort_values('Tの数')
-    # numpyに変換
-    _, train_nums = train_df.values.T
+test_df =  pd.read_csv(root_path + '/test_result_1.csv')
+test_df = test_df.sort_values('TF')
+test_indices, test_nums = test_df.values.T
 
-    val_df =  pd.read_csv(root_path + '/val.csv')
-    # val_df = val_df.sort_values('Tの数')
-    val_indices, val_nums = val_df.values.T
-
-    test_df =  pd.read_csv(root_path + '/test.csv')
-    # test_df = test_df.sort_values('Tの数')
-    test_indices, test_nums = test_df.values.T
-
-    # 図に出力
-    display_artifact(train_x, train_nums, root_path + "/train_last.png")
-    display_artifact(val_x, val_nums, root_path + "/val_last.png")
-    display_artifact(test_x, test_nums, root_path + "/test_last.png")
+# 図に出力
+display_artifact(train_x, train_nums, root_path + "/train_last.png")
+display_artifact(val_x, val_nums, root_path + "/val_last.png")
+display_artifact(test_x, test_nums, root_path + "/test_last.png")
