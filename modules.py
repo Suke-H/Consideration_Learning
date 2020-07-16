@@ -19,7 +19,8 @@ from torchvision import models, transforms
 
 def check_tf(net, x, t, path):
     # xを入力する準備
-    _input = np.array(x[:, np.newaxis, :, np.newaxis], dtype="float32")
+    # _input = np.array(x[:, np.newaxis, :, np.newaxis], dtype="float32")
+    _input = np.array(x, dtype="float32")
     _input = torch.from_numpy(_input)
     
     t = torch.from_numpy(t)

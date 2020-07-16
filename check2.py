@@ -4,7 +4,7 @@ import re
 import numpy as np
 import os
 
-target_path = "data/artifact/re_ex/"
+target_path = "data/MNIST_result/re_ex/"
 
 root_paths = sorted(glob( target_path + "experiment/**"))
 root_paths = [s for s in root_paths if ('train' in s) or ('val' in s)]
@@ -13,9 +13,9 @@ print(root_paths)
 
 for root_path in root_paths:
 
-    all_train = np.zeros(10000)
-    all_val = np.zeros(1000)
-    all_test = np.zeros(1000)
+    all_train = np.zeros(48000)
+    all_val = np.zeros(12000)
+    all_test = np.zeros(10000)
 
     csv_paths = sorted(glob(root_path + "/**.csv"),
                         key=lambda s: int(re.findall(r'\d+', s)[len(re.findall(r'\d+', s))-1]))
@@ -41,10 +41,10 @@ for root_path in root_paths:
         all_test += test
 
     # csvに保存
-    train_history = pd.DataFrame({"Tの数": all_train}, index = [i for i in range(10000)])
+    train_history = pd.DataFrame({"Tの数": all_train}, index = [i for i in range(48000)])
     train_history.to_csv( target_path + "result/" + root_name + "/train.csv")
-    val_history = pd.DataFrame({"Tの数": all_val}, index = [i for i in range(1000)])
+    val_history = pd.DataFrame({"Tの数": all_val}, index = [i for i in range(12000)])
     val_history.to_csv( target_path + "result/" + root_name + "/val.csv")
-    test_history = pd.DataFrame({"Tの数": all_test}, index = [i for i in range(1000)])
+    test_history = pd.DataFrame({"Tの数": all_test}, index = [i for i in range(10000)])
     test_history.to_csv( target_path + "result/" + root_name + "/test.csv")
 

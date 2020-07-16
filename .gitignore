@@ -2,3 +2,4 @@ data/MNIST
 __pycache__
 **.png
 prezentation
+tsne

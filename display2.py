@@ -58,7 +58,7 @@ test_dataset = torchvision.datasets.MNIST(root='./data',
                 train=False, download=True, transform=None)
 
 # フォルダ取得
-root_paths = sorted(glob("data/result/**"))
+root_paths = sorted(glob("data/MNIST_result/re_ex/result/**"))
 root_paths = [s for s in root_paths if ('train' in s) or ('val' in s)]
 
 print(root_paths)

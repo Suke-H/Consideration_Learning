@@ -16,6 +16,8 @@ import torch.utils.data as data
 import torchvision
 from torchvision import models, transforms
 
+from modules import fix_train_model, fix_test_model
+
 class ImageTransform():
     """
     画像の前処理クラス。
@@ -244,13 +246,15 @@ def test_model(net, dataloaders_dict, input_dim, root_path):
 
 if __name__ == "__main__":
 
-    limit_phase = "train"
-    limit_acc = 0.75
-    lr = 10**(-2)
-    num_epochs = 10
-    root_path = "data/MNIST_result/experiment/train75/"
+    limit_phase = "val"
+    limit_acc = 0.50
+    lr = 10**(-4)
+    num_epochs = 100
+    root_path = "data/MNIST_result/re_ex/experiment/val50/"
 
     # 入力画像の前処理用の関数
+    transform = ImageTransform()
+    img_transformed = transform
 
     # データセット読み込み + 前処理
     trainval_dataset = torchvision.datasets.MNIST(root='./data', 
@@ -283,6 +287,24 @@ if __name__ == "__main__":
     # 辞書型変数にまとめる
     dataloaders_dict = {"train": train_loader, "val": val_loader, "test": test_loader}
 
+    # train_x, train_t = train_dataset[:, 0].cpu.numpy(), train_dataset[:, 1].cpu.numpy()
+    # val_x, val_t = val_dataset[:, 0].cpu.numpy(), val_dataset[:, 1].cpu.numpy()
+    # test_x, test_t = test_dataset[:, 0].cpu.numpy(), test_dataset[:, 1].cpu.numpy()
+
+    train_x = np.array([train_dataset[i][0].cpu().numpy() for i in range(48000)])
+    train_y = np.array([train_dataset[i][1] for i in range(48000)])
+    val_x = np.array([val_dataset[i][0].cpu().numpy() for i in range(12000)])
+    val_y = np.array([val_dataset[i][1] for i in range(12000)])
+    test_x = np.array([test_dataset[i][0].cpu().numpy() for i in range(10000)])
+    test_y = np.array([test_dataset[i][1] for i in range(10000)])
+
+    # print(train_x.shape)
+    # a = input()
+
+    # 生データも辞書型に
+    data_dict = {"train_x": train_x, "val_x": val_x, "test_x": test_x, 
+                    "train_y": train_y, "val_y": val_y, "test_y": test_y}
+
     # モデル定義
     model = Net()
     # 損失関数
@@ -291,8 +313,9 @@ if __name__ == "__main__":
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.5)
 
     # 学習
-    train_model(model, dataloaders_dict, criterion, optimizer, limit_phase, limit_acc, num_epochs, root_path)
-
+    # train_model(model, dataloaders_dict, criterion, optimizer, limit_phase, limit_acc, num_epochs, root_path)
+    fix_train_model(model, dataloaders_dict, data_dict, criterion, optimizer, limit_phase, limit_acc, num_epochs, root_path)
     # 検証
-    test_model(model, dataloaders_dict, 28*28, root_path)
+    # test_model(model, dataloaders_dict, 28*28, root_path)
+    fix_test_model(model, dataloaders_dict, data_dict, 28*28, root_path)
 
